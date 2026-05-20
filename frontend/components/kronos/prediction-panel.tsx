@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, Shield, Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoTip } from "@/components/ui/tooltip";
 import { formatUSD } from "@/lib/format";
-import { useKronosLiveCandle } from "@/lib/hooks/use-kronos";
 import type { KronosPrediction } from "@/lib/api/schemas";
 
 interface Props {
@@ -16,51 +14,6 @@ interface Props {
   isLoading: boolean;
 }
 
-function useCountdown(targetIso: string | null | undefined): string | null {
-  const calc = () => {
-    if (!targetIso) return null;
-    const ms = new Date(targetIso).getTime() - Date.now();
-    if (ms <= 0) return "00:00:00";
-    const s = Math.floor(ms / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return [h, m, sec].map((x) => String(x).padStart(2, "0")).join(":");
-  };
-
-  const [remaining, setRemaining] = useState<string | null>(calc);
-
-  useEffect(() => {
-    if (!targetIso) { setRemaining(null); return; }
-    setRemaining(calc());
-    const id = setInterval(() => setRemaining(calc()), 1000);
-    return () => clearInterval(id);
-  }, [targetIso]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return remaining;
-}
-
-function useCandleProgress(openIso: string | null | undefined, closeIso: string | null | undefined): number {
-  const calc = () => {
-    if (!openIso || !closeIso) return 0;
-    const open = new Date(openIso).getTime();
-    const close = new Date(closeIso).getTime();
-    const total = close - open;
-    if (total <= 0) return 100;
-    return Math.min(100, Math.max(0, ((Date.now() - open) / total) * 100));
-  };
-
-  const [pct, setPct] = useState<number>(calc);
-
-  useEffect(() => {
-    if (!openIso || !closeIso) { setPct(0); return; }
-    setPct(calc());
-    const id = setInterval(() => setPct(calc()), 1000);
-    return () => clearInterval(id);
-  }, [openIso, closeIso]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return pct;
-}
 
 function ConfidenceBadge({ bandWidthPct }: { bandWidthPct: number }) {
   const level =
@@ -226,10 +179,6 @@ export function PriceTargetsCard({ timeframe, prediction, isLoading }: Props) {
 // ── Consensus Card ────────────────────────────────────────────────────────────
 
 export function ConsensusCard({ timeframe, prediction, isLoading }: Props) {
-  const { data: liveCandle } = useKronosLiveCandle(timeframe);
-  const candlePct = useCandleProgress(liveCandle?.open_time, liveCandle?.close_time);
-  const countdown = useCountdown(liveCandle?.close_time ?? null);
-
   if (isLoading) {
     return (
       <Card className="bg-bp-surface border-bp-border">
@@ -260,28 +209,37 @@ export function ConsensusCard({ timeframe, prediction, isLoading }: Props) {
   const isBullish    = prob >= 0.5;
   const displayPct   = isBullish ? bullishPct : bearishPct;
 
-  const accent = isBullish
+  const cardAccent = isBullish
     ? "border-emerald-500/20 bg-emerald-950/10"
     : "border-red-500/20 bg-red-950/10";
 
+  const directionBg = isBullish
+    ? "bg-emerald-500/10 border border-emerald-500/25"
+    : "bg-red-500/10 border border-red-500/25";
+
+  const directionColor = isBullish ? "text-emerald-400" : "text-red-400";
+
   return (
-    <Card className={`border ${accent}`}>
+    <Card className={`border ${cardAccent}`}>
       <CardHeader className="pb-1 pt-3 px-4">
-        <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-1">
+        <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
           Consensus · {timeframe}
           <InfoTip text="How many of the 30 stochastic simulations predicted a higher close price." />
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">
 
-        {/* Direction + pct */}
-        <div className="flex items-center gap-2">
+        {/* Direction block with translucent background */}
+        <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${directionBg}`}>
           {isBullish
-            ? <TrendingUp className="w-6 h-6 text-emerald-400 shrink-0" />
-            : <TrendingDown className="w-6 h-6 text-red-400 shrink-0" />}
-          <span className={`text-2xl font-bold ${isBullish ? "text-emerald-400" : "text-red-400"}`}>
-            {displayPct}% {isBullish ? "Bullish" : "Bearish"}
-          </span>
+            ? <TrendingUp className={`w-5 h-5 shrink-0 ${directionColor}`} />
+            : <TrendingDown className={`w-5 h-5 shrink-0 ${directionColor}`} />}
+          <div className="leading-tight">
+            <span className={`text-xl font-bold ${directionColor}`}>{displayPct}%</span>
+            <span className={`text-xl font-bold ml-1.5 ${directionColor}`}>
+              {isBullish ? "Bullish" : "Bearish"}
+            </span>
+          </div>
         </div>
 
         {/* Analyst counts */}
@@ -313,26 +271,8 @@ export function ConsensusCard({ timeframe, prediction, isLoading }: Props) {
           </div>
         </div>
 
-        {/* Candle time progress */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Current candle</span>
-            {countdown && (
-              <span className="text-[10px] font-mono text-zinc-500">
-                closes in <span className={isBullish ? "text-emerald-400" : "text-red-400"}>{countdown}</span>
-              </span>
-            )}
-          </div>
-          <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${isBullish ? "bg-emerald-500/60" : "bg-red-500/60"}`}
-              style={{ width: `${candlePct.toFixed(1)}%` }}
-            />
-          </div>
-          <p className="text-[9px] font-mono text-zinc-600 mt-0.5">{candlePct.toFixed(0)}% elapsed</p>
-        </div>
-
       </CardContent>
     </Card>
   );
 }
+
