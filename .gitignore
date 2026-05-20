@@ -32,7 +32,7 @@ env/
 
 # Project artifacts
 mlflow-artifacts/
-data/
+/data/
 *.parquet
 
 # Node (frontend, Etapa 10)

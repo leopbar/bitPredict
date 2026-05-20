@@ -10,7 +10,6 @@ venv/
 .env
 .env.local
 notebooks/
-alembic/versions/
 *.egg-info/
 build/
 dist/
