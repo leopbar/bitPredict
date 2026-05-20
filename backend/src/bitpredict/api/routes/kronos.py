@@ -598,12 +598,76 @@ def get_scoreboard(
     )
 
 
+class KronosBacktestTradeSchema(BaseModel):
+    id: int
+    target_open_time: datetime
+    backtest_id: int
+    timeframe: str
+    predicted_close: float | None
+    predicted_high: float | None
+    predicted_low: float | None
+    q10_close: float | None
+    q90_close: float | None
+    actual_open: float | None
+    actual_close: float | None
+    actual_high: float | None
+    actual_low: float | None
+    prob_bullish: float | None
+    direction_correct: bool | None
+    close_error_pct: float | None
+    band_covers_actual: bool | None
+    trade_return_pct: float | None
+    trade_pnl_usd: float | None
+
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
+
+
 class BacktestTriggerRequest(BaseModel):
     sample_size: int | None = None       # None = use default from _SAMPLE_SIZES
     sample_count: int = 30               # simulations per sample
     initial_capital: float | None = None # portfolio simulation capital
     position_pct: float | None = None    # fraction of capital per trade (0.0–1.0)
     compound: bool = False               # reinvest profits between trades
+
+
+@router.get(
+    "/backtest/{timeframe}/trades",
+    response_model=list[KronosBacktestTradeSchema],
+    summary="Per-trade results from the latest (or specified) backtest run",
+)
+def get_backtest_trades(
+    timeframe: str,
+    limit: int = Query(1000, ge=1, le=5000),
+    backtest_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(require_api_key),
+) -> list[KronosBacktestTradeSchema]:
+    from bitpredict.db_models import KronosBacktest, KronosBacktestTrade
+
+    _validate_timeframe(timeframe)
+
+    if backtest_id is None:
+        latest = db.execute(
+            select(KronosBacktest)
+            .where(KronosBacktest.timeframe == timeframe)
+            .order_by(KronosBacktest.executed_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if latest is None:
+            return []
+        backtest_id = latest.id
+
+    trades = db.execute(
+        select(KronosBacktestTrade)
+        .where(
+            KronosBacktestTrade.backtest_id == backtest_id,
+            KronosBacktestTrade.timeframe == timeframe,
+        )
+        .order_by(KronosBacktestTrade.target_open_time.asc())
+        .limit(limit)
+    ).scalars().all()
+
+    return [KronosBacktestTradeSchema.model_validate(t) for t in trades]
 
 
 @router.post(

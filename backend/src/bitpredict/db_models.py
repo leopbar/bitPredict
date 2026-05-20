@@ -159,6 +159,38 @@ class KronosBacktest(Base):
     total_trades:           Mapped[int | None]   = mapped_column(Integer, nullable=True)
 
 
+class KronosBacktestTrade(Base):
+    """Individual per-candle result from a backtest run."""
+
+    __tablename__ = "kronos_backtest_trades"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    target_open_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), primary_key=True, nullable=False
+    )
+    backtest_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    timeframe: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+
+    predicted_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+    predicted_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    predicted_low: Mapped[float | None] = mapped_column(Float, nullable=True)
+    q10_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+    q90_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    actual_open: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actual_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actual_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actual_low: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    prob_bullish: Mapped[float | None] = mapped_column(Float, nullable=True)
+    direction_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    close_error_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    band_covers_actual: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    trade_return_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    trade_pnl_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
 # ── RSI-2 Strategy tables ─────────────────────────────────────────────────────
 
 class FundingRate(Base):

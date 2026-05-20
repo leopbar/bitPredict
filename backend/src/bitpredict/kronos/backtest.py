@@ -417,6 +417,52 @@ def run_backtest(
         total_trades=portfolio.get("total_trades"),
     )
     db.add(record)
+    db.flush()  # assigns next_id without committing yet
+
+    # Persist per-trade rows
+    from bitpredict.db_models import KronosBacktestTrade
+
+    trade_ids = db.execute(
+        _text(f"SELECT nextval('kronos_backtest_trades_id_seq') FROM generate_series(1, {len(results)})")
+    ).scalars().all()
+
+    for trade_id, r in zip(trade_ids, results):
+        is_long = float(r.get("prob_bullish") or 0.5) >= 0.5
+        actual_open_px = r.get("actual_open")
+        actual_close_px = r.get("actual_close")
+
+        trade_return_pct: float | None = None
+        trade_pnl_usd: float | None = None
+
+        if actual_open_px and actual_close_px and actual_open_px != 0:
+            raw_ret = (actual_close_px - actual_open_px) / actual_open_px * 100
+            trade_return_pct = raw_ret if is_long else -raw_ret
+
+        if trade_return_pct is not None and initial_capital is not None and position_pct is not None:
+            trade_pnl_usd = round(initial_capital * position_pct * trade_return_pct / 100, 2)
+
+        db.add(KronosBacktestTrade(
+            id=trade_id,
+            target_open_time=r["target_open_time"],
+            backtest_id=next_id,
+            timeframe=timeframe.value,
+            predicted_close=r.get("predicted_close"),
+            predicted_high=r.get("predicted_high"),
+            predicted_low=r.get("predicted_low"),
+            q10_close=r.get("q10_close"),
+            q90_close=r.get("q90_close"),
+            actual_open=actual_open_px,
+            actual_close=actual_close_px,
+            actual_high=r.get("actual_high"),
+            actual_low=r.get("actual_low"),
+            prob_bullish=r.get("prob_bullish"),
+            direction_correct=r.get("direction_correct"),
+            close_error_pct=r.get("close_error_pct"),
+            band_covers_actual=r.get("band_covers_actual"),
+            trade_return_pct=trade_return_pct,
+            trade_pnl_usd=trade_pnl_usd,
+        ))
+
     db.commit()
     db.refresh(record)
     logger.info(

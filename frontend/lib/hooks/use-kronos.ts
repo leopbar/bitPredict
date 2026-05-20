@@ -151,6 +151,15 @@ export function useKronosSims(timeframe: string) {
   });
 }
 
+export function useKronosBacktestTrades(timeframe: string, backtestId?: number) {
+  return useQuery({
+    queryKey: ["kronos-backtest-trades", timeframe, backtestId],
+    queryFn: () => kronosApi.getBacktestTrades(timeframe, 1000, backtestId),
+    staleTime: 120_000,
+    retry: false,
+  });
+}
+
 export function useKronosLiveCandle(timeframe: string) {
   return useQuery({
     queryKey: ["kronos-live-candle", timeframe],

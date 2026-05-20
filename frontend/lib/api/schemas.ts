@@ -249,6 +249,29 @@ export const KronosBacktestDataInfoSchema = z.object({
 });
 export type KronosBacktestDataInfo = z.infer<typeof KronosBacktestDataInfoSchema>;
 
+export const KronosBacktestTradeSchema = z.object({
+  id: z.number(),
+  target_open_time: z.string(),
+  backtest_id: z.number(),
+  timeframe: z.string(),
+  predicted_close: z.number().nullable(),
+  predicted_high: z.number().nullable(),
+  predicted_low: z.number().nullable(),
+  q10_close: z.number().nullable(),
+  q90_close: z.number().nullable(),
+  actual_open: z.number().nullable(),
+  actual_close: z.number().nullable(),
+  actual_high: z.number().nullable(),
+  actual_low: z.number().nullable(),
+  prob_bullish: z.number().nullable(),
+  direction_correct: z.boolean().nullable(),
+  close_error_pct: z.number().nullable(),
+  band_covers_actual: z.boolean().nullable(),
+  trade_return_pct: z.number().nullable(),
+  trade_pnl_usd: z.number().nullable(),
+});
+export type KronosBacktestTrade = z.infer<typeof KronosBacktestTradeSchema>;
+
 export const KronosBacktestProgressSchema = z.object({
   timeframe: z.string(),
   task_id: z.string().nullable(),

@@ -17,6 +17,7 @@ import type {
   KronosBacktest,
   KronosBacktestDataInfo,
   KronosBacktestProgress,
+  KronosBacktestTrade,
 } from "./schemas";
 
 // ---------------------------------------------------------------------------
@@ -269,6 +270,14 @@ export const kronosApi = {
 
   stopBacktest: (timeframe: string) =>
     apiClient.post<StopResponse>(`/kronos/backtest/${timeframe}/stop`, {}),
+
+  getBacktestTrades: (timeframe: string, limit = 1000, backtestId?: number) => {
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (backtestId != null) qs.set("backtest_id", String(backtestId));
+    return apiClient.get<KronosBacktestTrade[]>(
+      `/kronos/backtest/${timeframe}/trades?${qs.toString()}`,
+    );
+  },
 };
 
 // ---------------------------------------------------------------------------

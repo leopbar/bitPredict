@@ -14,6 +14,7 @@ import {
   useKronosTriggerBacktest,
   useKronosStopBacktest,
 } from "@/lib/hooks/use-kronos";
+import { BacktestTradesCard } from "@/components/kronos/backtest-trades-card";
 import type { KronosBacktest, KronosBacktestDataInfoItem } from "@/lib/api/schemas";
 
 const TIMEFRAME = "15m" as const;
@@ -179,6 +180,7 @@ function ResultsCard({ timeframe }: { timeframe: TF }) {
   useEffect(() => {
     if (wasRunning.current && !isRunning) {
       queryClient.invalidateQueries({ queryKey: ["kronos-backtest", timeframe] });
+      queryClient.invalidateQueries({ queryKey: ["kronos-backtest-trades", timeframe] });
     }
     wasRunning.current = isRunning;
   }, [isRunning, timeframe, queryClient]);
@@ -670,6 +672,8 @@ export default function BacktestPage() {
         {/* Right: run card */}
         <RunCard timeframe={TIMEFRAME} />
       </div>
+
+      <BacktestTradesCard timeframe={TIMEFRAME} />
     </div>
   );
 }
