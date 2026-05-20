@@ -65,48 +65,43 @@ function KronosDashboard() {
         klineCount={klineCount}
       />
 
-      {/* Two-column outer grid: main content + right sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+      {/*
+        Single grid: [2fr 1fr 1fr 280px]
+        Row 1 — 4 cards share the same height via CSS grid stretch (default).
+        Row 2 — left content spans 3 cols; Alerts stays in col 4 (280px).
+      */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_280px] gap-4">
 
-        {/* Left column */}
-        <div className="space-y-4">
+        {/* Row 1 — top cards */}
+        <PriceTargetsCard
+          timeframe={TIMEFRAME}
+          prediction={prediction}
+          isLoading={predLoading}
+        />
+        <ConsensusCard
+          timeframe={TIMEFRAME}
+          prediction={prediction}
+          isLoading={predLoading}
+        />
+        <LiveCandleCard timeframe={TIMEFRAME} />
+        <ScoreboardCard timeframe={TIMEFRAME} />
 
-          {/* Top row: 3 cards — Price Targets wider than the other two */}
-          <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-4">
-            <PriceTargetsCard
-              timeframe={TIMEFRAME}
-              prediction={prediction}
-              isLoading={predLoading}
-            />
-            <ConsensusCard
-              timeframe={TIMEFRAME}
-              prediction={prediction}
-              isLoading={predLoading}
-            />
-            <LiveCandleCard timeframe={TIMEFRAME} />
-          </div>
-
-          {/* Full-width distribution chart */}
+        {/* Row 2 — main content spans 3 cols */}
+        <div className="lg:col-span-3 space-y-4">
           <AnalystDistributionChart
             timeframe={TIMEFRAME}
             prediction={prediction}
           />
-
-          {/* Prediction history */}
           <HistoryTable timeframe={TIMEFRAME} />
         </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          <ScoreboardCard timeframe={TIMEFRAME} />
+        {/* Row 2 col 4 — Alerts (unchanged, stays below Scoreboard) */}
+        <Card className="bg-bp-surface border-bp-border">
+          <CardContent className="px-4 py-8 text-center">
+            <p className="text-xs text-zinc-500">Alerts — coming soon</p>
+          </CardContent>
+        </Card>
 
-          {/* Alerts placeholder */}
-          <Card className="bg-bp-surface border-bp-border">
-            <CardContent className="px-4 py-8 text-center">
-              <p className="text-xs text-zinc-500">Alerts — coming soon</p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

@@ -28,14 +28,14 @@ export function ScoreboardCard({ timeframe }: Props) {
 
   return (
     <Card className="bg-bp-surface border-bp-border">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-1">
+      <CardHeader className="pb-1 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
           Scoreboard
           <InfoTip text="Accuracy metrics across all predictions where the candle has already closed and the actual result is known." />
-          <span className="ml-auto text-xs font-normal text-zinc-500">{timeframe}</span>
+          <span className="ml-auto text-xs font-normal normal-case tracking-normal text-zinc-500">{timeframe}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-4 pb-3">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -47,7 +47,7 @@ export function ScoreboardCard({ timeframe }: Props) {
             No evaluated predictions yet. Results fill in automatically after each candle closes.
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <tbody className="divide-y divide-bp-border/30">
               <Row
                 label="Evaluated"
@@ -116,11 +116,11 @@ function Row({
 }) {
   return (
     <tr>
-      <td className="py-1.5 pr-4 text-zinc-500 whitespace-nowrap flex items-center gap-0.5">
+      <td className="py-1 pr-4 text-zinc-500 whitespace-nowrap flex items-center gap-0.5">
         {label}
         <InfoTip text={tip} />
       </td>
-      <td className={`py-1.5 font-mono font-medium ${valueClass}`}>{value}</td>
+      <td className={`py-1 font-mono font-medium ${valueClass}`}>{value}</td>
     </tr>
   );
 }
