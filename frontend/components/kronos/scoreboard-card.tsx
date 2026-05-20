@@ -26,16 +26,59 @@ export function ScoreboardCard({ timeframe }: Props) {
     : dirPct >= 45  ? "text-yellow-400"
     : "text-red-400";
 
+  const correctPct = dirPct ?? 0;
+  const wrongPct   = 100 - correctPct;
+
   return (
-    <Card className="bg-bp-surface border-bp-border">
-      <CardHeader className="pb-1 pt-3 px-4">
+    <Card className="relative overflow-hidden bg-bp-surface border-bp-border">
+
+      {/* Dynamic bar chart background — updates with real directional_accuracy */}
+      {!noData && (
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.12]"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="sbCorrectGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.2" />
+            </linearGradient>
+            <linearGradient id="sbWrongGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.2" />
+            </linearGradient>
+          </defs>
+          {/* Correct direction bar — left, height = correctPct */}
+          <rect
+            x="18"
+            y={100 - correctPct}
+            width="26"
+            height={correctPct}
+            fill="url(#sbCorrectGrad)"
+            rx="2"
+          />
+          {/* Wrong direction bar — right, height = wrongPct */}
+          <rect
+            x="56"
+            y={100 - wrongPct}
+            width="26"
+            height={wrongPct}
+            fill="url(#sbWrongGrad)"
+            rx="2"
+          />
+        </svg>
+      )}
+
+      <CardHeader className="pb-1 pt-3 px-4 relative">
         <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
           Scoreboard
           <InfoTip text="Accuracy metrics across all predictions where the candle has already closed and the actual result is known." />
           <span className="ml-auto text-xs font-normal normal-case tracking-normal text-zinc-500">{timeframe}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pb-3">
+      <CardContent className="px-4 pb-3 relative">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (

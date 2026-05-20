@@ -95,8 +95,8 @@ function KronosDashboard() {
           <HistoryTable timeframe={TIMEFRAME} />
         </div>
 
-        {/* Row 2 col 4 — Alerts (unchanged, stays below Scoreboard) */}
-        <Card className="bg-bp-surface border-bp-border">
+        {/* Row 2 col 4 — Alerts (self-start prevents grid from stretching its height) */}
+        <Card className="bg-bp-surface border-bp-border self-start">
           <CardContent className="px-4 py-8 text-center">
             <p className="text-xs text-zinc-500">Alerts — coming soon</p>
           </CardContent>
