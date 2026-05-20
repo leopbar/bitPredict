@@ -90,7 +90,10 @@ function Sparkline({ closes, isUp }: { closes: number[]; isUp: boolean }) {
 
 export function LiveCandleCard({ timeframe }: Props) {
   const { data: candle, isLoading } = useKronosLiveCandle(timeframe);
-  const { data: klinesData } = useKlines({ symbol: "BTCUSDT", interval: "15m", limit: 96 });
+  // Sparkline: last 30 days at 1d, 24h of candles otherwise
+  const klinesInterval = timeframe === "1d" ? "1d" : timeframe === "1h" ? "1h" : "15m";
+  const klinesLimit    = timeframe === "1d" ? 30  : timeframe === "1h" ? 24  : 96;
+  const { data: klinesData } = useKlines({ symbol: "BTCUSDT", interval: klinesInterval, limit: klinesLimit });
 
   const secs = useCountdownSeconds(candle?.close_time ?? null);
 

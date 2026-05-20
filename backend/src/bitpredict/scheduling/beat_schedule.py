@@ -14,6 +14,18 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="1,16,31,46"),
     },
 
+    # ── Kronos 1h cycle: ingest → predict, offset by 1 min to avoid CPU clash ─
+    "kronos-1h-cycle": {
+        "task": "kronos.run_1h_cycle",
+        "schedule": crontab(minute=2),
+    },
+
+    # ── Kronos 1d cycle: fires at 00:03 UTC after the daily candle closes ────
+    "kronos-1d-cycle": {
+        "task": "kronos.run_1d_cycle",
+        "schedule": crontab(hour=0, minute=3),
+    },
+
     # ── Kronos actuals fill (every 5 min) ────────────────────────────────────
     "kronos-fill-actuals": {
         "task": "kronos.fill_actuals",

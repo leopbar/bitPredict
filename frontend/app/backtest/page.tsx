@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Play, Square, Database, BarChart3, Clock, CheckCircle2, XCircle, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoTip } from "@/components/ui/tooltip";
+import { TimeframeToggle } from "@/components/ui/timeframe-toggle";
+import { useTimeframe, type AppTimeframe } from "@/lib/hooks/use-timeframe";
 import {
   useKronosBacktest,
   useKronosBacktestDataInfo,
@@ -16,9 +18,6 @@ import {
 } from "@/lib/hooks/use-kronos";
 import { BacktestTradesCard } from "@/components/kronos/backtest-trades-card";
 import type { KronosBacktest, KronosBacktestDataInfoItem } from "@/lib/api/schemas";
-
-const TIMEFRAME = "15m" as const;
-type TF = typeof TIMEFRAME;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -82,16 +81,16 @@ function DataInfoRow({ item }: { item: KronosBacktestDataInfoItem }) {
   );
 }
 
-function DataInfoCard() {
+function DataInfoCard({ timeframe }: { timeframe: AppTimeframe }) {
   const { data, isLoading } = useKronosBacktestDataInfo();
-  const item = data?.timeframes[TIMEFRAME];
+  const item = data?.timeframes[timeframe];
 
   return (
     <Card className="bg-bp-surface border-bp-border">
       <CardHeader className="pb-1 pt-3 px-4">
         <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-1.5">
           <Database className="w-4 h-4 text-zinc-400" />
-          Available Data · 15m
+          Available Data · {timeframe.toUpperCase()}
           <InfoTip text="Candles available in the database and how many are eligible as backtest targets (each requires 512 prior candles for context)." />
         </CardTitle>
       </CardHeader>
@@ -131,7 +130,7 @@ function DataInfoCard() {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-zinc-500">No 15m data available yet.</p>
+          <p className="text-xs text-zinc-500">No {timeframe.toUpperCase()} data available yet.</p>
         )}
       </CardContent>
     </Card>
@@ -169,7 +168,7 @@ function MetricRow({ label, value, tip }: { label: string; value: string; tip?: 
   );
 }
 
-function ResultsCard({ timeframe }: { timeframe: TF }) {
+function ResultsCard({ timeframe }: { timeframe: AppTimeframe }) {
   const { data, isLoading } = useKronosBacktest(timeframe);
   const queryClient = useQueryClient();
   const { data: progress } = useKronosBacktestProgress(timeframe);
@@ -402,7 +401,7 @@ function ResultsCard({ timeframe }: { timeframe: TF }) {
   );
 }
 
-function RunCard({ timeframe }: { timeframe: TF }) {
+function RunCard({ timeframe }: { timeframe: AppTimeframe }) {
   const { data: progress } = useKronosBacktestProgress(timeframe);
   const trigger = useKronosTriggerBacktest();
   const stop = useKronosStopBacktest();
@@ -438,7 +437,7 @@ function RunCard({ timeframe }: { timeframe: TF }) {
       <CardHeader className="pb-1 pt-3 px-4">
         <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-1.5">
           <Clock className="w-4 h-4 text-zinc-400" />
-          Run Backtest
+          Run Backtest · {timeframe.toUpperCase()}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-4">
@@ -573,10 +572,7 @@ function RunCard({ timeframe }: { timeframe: TF }) {
               </div>
               <div className="relative w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                 {isLoading ? (
-                  /* Indeterminate: narrow segment sliding left→right, never fills */
-                  <div
-                    className="absolute inset-y-0 w-2/5 rounded-full bg-cyan-600 animate-indeterminate"
-                  />
+                  <div className="absolute inset-y-0 w-2/5 rounded-full bg-cyan-600 animate-indeterminate" />
                 ) : (
                   <div
                     className="h-full rounded-full bg-cyan-500 transition-all duration-500"
@@ -591,7 +587,7 @@ function RunCard({ timeframe }: { timeframe: TF }) {
               </p>
             </div>
 
-            {/* Per-sample simulations bar (green) — fills and resets for each sample */}
+            {/* Per-sample simulations bar (green) */}
             {isBacktesting && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -650,30 +646,49 @@ function RunCard({ timeframe }: { timeframe: TF }) {
   );
 }
 
+// ── Inner content (uses useTimeframe → needs Suspense) ────────────────────────
+
+function BacktestContent() {
+  const [timeframe] = useTimeframe();
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        {/* Left: data info + results */}
+        <div className="space-y-4">
+          <DataInfoCard timeframe={timeframe} />
+          <ResultsCard timeframe={timeframe} />
+        </div>
+
+        {/* Right: run card — key forces remount (resets inputs) on TF change */}
+        <RunCard key={timeframe} timeframe={timeframe} />
+      </div>
+
+      <BacktestTradesCard timeframe={timeframe} />
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BacktestPage() {
   return (
     <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
-      <div>
-        <h1 className="text-base font-semibold text-zinc-100">Kronos Backtest · 15m</h1>
-        <p className="text-xs text-zinc-500 mt-0.5">
-          Historical accuracy evaluation · random sampling · 512 candles context per sample
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        {/* Left: data info + results */}
-        <div className="space-y-4">
-          <DataInfoCard />
-          <ResultsCard timeframe={TIMEFRAME} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-base font-semibold text-zinc-100">Kronos Backtest</h1>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Historical accuracy evaluation · random sampling · 512 candles context per sample
+          </p>
         </div>
-
-        {/* Right: run card */}
-        <RunCard timeframe={TIMEFRAME} />
+        <Suspense>
+          <TimeframeToggle />
+        </Suspense>
       </div>
 
-      <BacktestTradesCard timeframe={TIMEFRAME} />
+      <Suspense>
+        <BacktestContent />
+      </Suspense>
     </div>
   );
 }

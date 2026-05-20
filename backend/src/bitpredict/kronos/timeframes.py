@@ -70,7 +70,7 @@ class Timeframe(str, Enum):
             "1h":  200,
             "4h":  200,
             "8h":  200,
-            "1d":  200,
+            "1d":  270,   # ~10 % of eligible samples (2 687 eligible as of 2026-05)
             "1w":  None,
         }
         return _map[self.value]

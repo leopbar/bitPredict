@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PipelineProgressCard } from "@/components/kronos/pipeline-progress-card";
 import { PriceTargetsCard, ConsensusCard } from "@/components/kronos/prediction-panel";
@@ -9,6 +9,7 @@ import { HistoryTable } from "@/components/kronos/history-table";
 import { ScoreboardCard } from "@/components/kronos/scoreboard-card";
 import { LiveCandleCard } from "@/components/kronos/live-candle-card";
 import { BacktestSummaryCard } from "@/components/kronos/backtest-summary-card";
+import { TimeframeToggle } from "@/components/ui/timeframe-toggle";
 import {
   useKronosPrediction,
   useKronosProgress,
@@ -16,16 +17,16 @@ import {
   useKronosSims,
 } from "@/lib/hooks/use-kronos";
 import { useEnsureKlines } from "@/lib/hooks/use-klines";
-
-const TIMEFRAME = "15m";
+import { useTimeframe } from "@/lib/hooks/use-timeframe";
 
 function KronosDashboard() {
   const queryClient = useQueryClient();
-  const { data: prediction, isLoading: predLoading } = useKronosPrediction(TIMEFRAME);
-  const { data: progress } = useKronosProgress(TIMEFRAME);
-  const { data: sims, isLoading: simsLoading } = useKronosSims(TIMEFRAME);
+  const [timeframe] = useTimeframe();
+  const { data: prediction, isLoading: predLoading } = useKronosPrediction(timeframe);
+  const { data: progress } = useKronosProgress(timeframe);
+  const { data: sims, isLoading: simsLoading } = useKronosSims(timeframe);
   const trigger = useKronosTrigger();
-  const { isIngesting, klineCount } = useEnsureKlines(TIMEFRAME);
+  const { isIngesting, klineCount } = useEnsureKlines(timeframe);
   const lastTriggeredAt = useRef<number>(0);
   const wasRunning = useRef(false);
 
@@ -34,13 +35,13 @@ function KronosDashboard() {
 
   useEffect(() => {
     if (wasRunning.current && !isRunning) {
-      queryClient.invalidateQueries({ queryKey: ["kronos-prediction", TIMEFRAME] });
-      queryClient.invalidateQueries({ queryKey: ["kronos-sims", TIMEFRAME] });
-      queryClient.invalidateQueries({ queryKey: ["kronos-history", TIMEFRAME] });
-      queryClient.invalidateQueries({ queryKey: ["kronos-scoreboard", TIMEFRAME] });
+      queryClient.invalidateQueries({ queryKey: ["kronos-prediction", timeframe] });
+      queryClient.invalidateQueries({ queryKey: ["kronos-sims", timeframe] });
+      queryClient.invalidateQueries({ queryKey: ["kronos-history", timeframe] });
+      queryClient.invalidateQueries({ queryKey: ["kronos-scoreboard", timeframe] });
     }
     wasRunning.current = isRunning;
-  }, [isRunning, queryClient]);
+  }, [isRunning, queryClient, timeframe]);
 
   useEffect(() => {
     const now = Date.now();
@@ -53,14 +54,14 @@ function KronosDashboard() {
       now - lastTriggeredAt.current > 60_000
     ) {
       lastTriggeredAt.current = now;
-      trigger.mutate(TIMEFRAME);
+      trigger.mutate(timeframe);
     }
-  }, [isIngesting, simsLoading, simsAvailable, isRunning, trigger.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isIngesting, simsLoading, simsAvailable, isRunning, trigger.isPending, timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
       <PipelineProgressCard
-        timeframe={TIMEFRAME}
+        timeframe={timeframe}
         isIngesting={isIngesting}
         klineCount={klineCount}
       />
@@ -68,36 +69,36 @@ function KronosDashboard() {
       {/*
         Single grid: [2fr 1fr 1fr 280px]
         Row 1 — 4 cards share the same height via CSS grid stretch (default).
-        Row 2 — left content spans 3 cols; Alerts stays in col 4 (280px).
+        Row 2 — left content spans 3 cols; BacktestSummary stays in col 4 (280px).
       */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_280px] gap-4">
 
         {/* Row 1 — top cards */}
         <PriceTargetsCard
-          timeframe={TIMEFRAME}
+          timeframe={timeframe}
           prediction={prediction}
           isLoading={predLoading}
         />
         <ConsensusCard
-          timeframe={TIMEFRAME}
+          timeframe={timeframe}
           prediction={prediction}
           isLoading={predLoading}
         />
-        <LiveCandleCard timeframe={TIMEFRAME} />
-        <ScoreboardCard timeframe={TIMEFRAME} />
+        <LiveCandleCard timeframe={timeframe} />
+        <ScoreboardCard timeframe={timeframe} />
 
         {/* Row 2 — AnalystDistribution (col-span-3) + BacktestSummary (col 4) same height */}
         <div className="lg:col-span-3">
           <AnalystDistributionChart
-            timeframe={TIMEFRAME}
+            timeframe={timeframe}
             prediction={prediction}
           />
         </div>
-        <BacktestSummaryCard timeframe={TIMEFRAME} />
+        <BacktestSummaryCard timeframe={timeframe} />
 
         {/* Row 3 — HistoryTable spans all 4 cols */}
         <div className="lg:col-span-4">
-          <HistoryTable timeframe={TIMEFRAME} />
+          <HistoryTable timeframe={timeframe} />
         </div>
 
       </div>
@@ -108,12 +109,19 @@ function KronosDashboard() {
 export default function Home() {
   return (
     <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
-      <div>
-        <h1 className="text-base font-semibold text-zinc-100">BTC Forecast · 15m</h1>
-        <p className="text-xs text-zinc-500 mt-0.5">Powered by Kronos · NeoQuasar · 30 stochastic simulations per candle</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-base font-semibold text-zinc-100">BTC Forecast</h1>
+          <p className="text-xs text-zinc-500 mt-0.5">Powered by Kronos · NeoQuasar · 30 stochastic simulations per candle</p>
+        </div>
+        <Suspense>
+          <TimeframeToggle />
+        </Suspense>
       </div>
 
-      <KronosDashboard />
+      <Suspense>
+        <KronosDashboard />
+      </Suspense>
     </div>
   );
 }

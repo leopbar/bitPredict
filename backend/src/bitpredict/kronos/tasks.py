@@ -90,6 +90,148 @@ def run_15m_cycle(self):
     return {"status": "done", "timeframe": timeframe, "prediction_id": record.id}
 
 
+@celery_app.task(name="kronos.run_1h_cycle", bind=True, queue="predictions")
+def run_1h_cycle(self):
+    """1h full cycle: ingest latest klines → run Kronos prediction, sequential."""
+    import redis as _redis
+    from bitpredict.config import get_settings
+    from bitpredict.data.historical import download_and_persist_latest
+    from bitpredict.kronos.service import run_prediction
+    from bitpredict.kronos.timeframes import Timeframe
+
+    timeframe = "1h"
+    tf = Timeframe(timeframe)
+    task_id: str = self.request.id
+    settings = get_settings()
+
+    # ── Step 1: Ingest ────────────────────────────────────────────────────────
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "ingesting klines", "current": 0, "total": 30, "eta_seconds": None},
+    )
+    try:
+        new_candles = _run_async(download_and_persist_latest("BTCUSDT", timeframe))
+        logger.info("1h cycle: ingested %d new candles", new_candles)
+    except Exception as exc:
+        logger.error("1h cycle: ingest failed: %s", exc)
+        raise
+
+    # ── Step 2: Predict ───────────────────────────────────────────────────────
+    r = _redis.Redis.from_url(str(settings.redis_url), decode_responses=True)
+    stop_key = f"kronos:stop:{task_id}"
+    sample_times: list[float] = []
+
+    def stop_check() -> bool:
+        return bool(r.get(stop_key))
+
+    def progress_callback(current: int, total: int) -> None:
+        sample_times.append(time.monotonic())
+        eta = None
+        if len(sample_times) >= 2:
+            avg_s = (sample_times[-1] - sample_times[0]) / (len(sample_times) - 1)
+            eta = int(avg_s * (total - current))
+        self.update_state(
+            state="PROGRESS",
+            meta={"step": "inference", "current": current, "total": total, "eta_seconds": eta},
+        )
+
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "loading context", "current": 0, "total": 30, "eta_seconds": None},
+    )
+
+    record = run_prediction(
+        tf,
+        task_id=task_id,
+        stopped_flag=stop_check(),
+        stop_check=stop_check,
+        progress_callback=progress_callback,
+    )
+
+    if record.status == "stopped_by_user":
+        logger.info("1h cycle stopped by user")
+        return {"status": "stopped_by_user", "timeframe": timeframe}
+
+    logger.info(
+        "1h cycle done: id=%d close=%.2f bullish=%.0f%%",
+        record.id,
+        float(record.predicted_close or 0),
+        float(record.prob_bullish or 0) * 100,
+    )
+    return {"status": "done", "timeframe": timeframe, "prediction_id": record.id}
+
+
+@celery_app.task(name="kronos.run_1d_cycle", bind=True, queue="predictions")
+def run_1d_cycle(self):
+    """1d full cycle: ingest latest klines → run Kronos prediction, sequential."""
+    import redis as _redis
+    from bitpredict.config import get_settings
+    from bitpredict.data.historical import download_and_persist_latest
+    from bitpredict.kronos.service import run_prediction
+    from bitpredict.kronos.timeframes import Timeframe
+
+    timeframe = "1d"
+    tf = Timeframe(timeframe)
+    task_id: str = self.request.id
+    settings = get_settings()
+
+    # ── Step 1: Ingest ────────────────────────────────────────────────────────
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "ingesting klines", "current": 0, "total": 30, "eta_seconds": None},
+    )
+    try:
+        new_candles = _run_async(download_and_persist_latest("BTCUSDT", timeframe))
+        logger.info("1d cycle: ingested %d new candles", new_candles)
+    except Exception as exc:
+        logger.error("1d cycle: ingest failed: %s", exc)
+        raise
+
+    # ── Step 2: Predict ───────────────────────────────────────────────────────
+    r = _redis.Redis.from_url(str(settings.redis_url), decode_responses=True)
+    stop_key = f"kronos:stop:{task_id}"
+    sample_times: list[float] = []
+
+    def stop_check() -> bool:
+        return bool(r.get(stop_key))
+
+    def progress_callback(current: int, total: int) -> None:
+        sample_times.append(time.monotonic())
+        eta = None
+        if len(sample_times) >= 2:
+            avg_s = (sample_times[-1] - sample_times[0]) / (len(sample_times) - 1)
+            eta = int(avg_s * (total - current))
+        self.update_state(
+            state="PROGRESS",
+            meta={"step": "inference", "current": current, "total": total, "eta_seconds": eta},
+        )
+
+    self.update_state(
+        state="PROGRESS",
+        meta={"step": "loading context", "current": 0, "total": 30, "eta_seconds": None},
+    )
+
+    record = run_prediction(
+        tf,
+        task_id=task_id,
+        stopped_flag=stop_check(),
+        stop_check=stop_check,
+        progress_callback=progress_callback,
+    )
+
+    if record.status == "stopped_by_user":
+        logger.info("1d cycle stopped by user")
+        return {"status": "stopped_by_user", "timeframe": timeframe}
+
+    logger.info(
+        "1d cycle done: id=%d close=%.2f bullish=%.0f%%",
+        record.id,
+        float(record.predicted_close or 0),
+        float(record.prob_bullish or 0) * 100,
+    )
+    return {"status": "done", "timeframe": timeframe, "prediction_id": record.id}
+
+
 @celery_app.task(name="kronos.run_prediction", bind=True, queue="predictions")
 def run_kronos_prediction(self, timeframe: str):
     """Run Kronos inference for one timeframe and persist the result.
