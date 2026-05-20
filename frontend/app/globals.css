@@ -1,0 +1,107 @@
+/* Inter from Google Fonts — loaded first, before Tailwind resets */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 9% 0.012 256.8;
+    --surface: 13% 0.012 256.8;
+    --surface-2: 17% 0.012 256.8;
+    --border: 22% 0.012 256.8;
+    --text-primary: 93% 0.006 256.8;
+    --text-secondary: 63% 0.01 256.8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html, body {
+    font-family: 'Inter', var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background-color: #0A0A0B;
+    color: #fafafa;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #131316;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+}
+
+@keyframes indeterminate-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.animate-indeterminate {
+  animation: indeterminate-slide 1.4s ease-in-out infinite;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Primary card surface — matches design spec exactly */
+  .card-surface {
+    background-color: #131316;
+    border: 1px solid #27272a;
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Nested / inner card (slightly lighter) */
+  .card-inner {
+    background-color: #1C1C20;
+    border: 1px solid #27272a;
+    border-radius: 10px;
+  }
+
+  .text-muted {
+    @apply text-zinc-400;
+  }
+
+  .accent-emerald {
+    @apply text-emerald-400;
+  }
+
+  .accent-coral {
+    @apply text-rose-400;
+  }
+
+  .accent-amber {
+    @apply text-amber-400;
+  }
+
+  .accent-cobalt {
+    @apply text-blue-400;
+  }
+
+  .accent-cyan {
+    @apply text-cyan-400;
+  }
+}

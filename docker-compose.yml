@@ -1,0 +1,170 @@
+name: bitpredict
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: bitpredict-db
+    environment:
+      POSTGRES_USER: bitpredict
+      POSTGRES_PASSWORD: bitpredict
+      POSTGRES_DB: bitpredict
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bitpredict -d bitpredict"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bitpredict-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bitpredict-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - bitpredict-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: bitpredict-backend
+    command: ["uvicorn", "bitpredict.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/tests:/app/tests
+      - ./backend/scripts:/app/scripts
+      - ./data:/app/data
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bitpredict-net
+
+  frontend:
+    build:
+      context: ./frontend
+      target: deps          # only install node_modules, skip production build
+    container_name: bitpredict-frontend
+    command: ["npm", "run", "dev"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_KEY: dev-secret-key
+      NODE_ENV: development
+      # File-watch polling — bind mounts on Windows/WSL2 don't emit inotify events,
+      # so Next.js's webpack/chokidar watcher misses code edits without this.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
+    volumes:
+      - ./frontend:/app                              # live source code
+      - frontend_node_modules:/app/node_modules     # preserve installed deps
+      - frontend_next_cache:/app/.next              # keep build cache OUT of OneDrive
+                                                    # (avoids file-lock EACCES from sync)
+    ports:
+      - "3000:3000"
+    networks:
+      - bitpredict-net
+
+  worker_predictions:
+    build:
+      context: ./backend
+    container_name: bitpredict-worker-predictions
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=2", "--queues=celery,predictions", "--hostname=worker-predictions@%h"]
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./data:/app/data
+    networks:
+      - bitpredict-net
+
+  worker_backtests:
+    build:
+      context: ./backend
+    container_name: bitpredict-worker-backtests
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=1", "--queues=backtests", "--hostname=worker-backtests@%h"]
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./data:/app/data
+    networks:
+      - bitpredict-net
+
+  beat:
+    build:
+      context: ./backend
+    container_name: bitpredict-beat
+    command: ["celery", "-A", "bitpredict.scheduling.beat_schedule:celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./data:/app/data
+    networks:
+      - bitpredict-net
+
+  flower:
+    build:
+      context: ./backend
+    container_name: bitpredict-flower
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "flower", "--port=5555"]
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - redis
+    ports:
+      - "5555:5555"
+    networks:
+      - bitpredict-net
+
+
+volumes:
+  pgdata:
+  frontend_node_modules:
+  frontend_next_cache:
+
+networks:
+  bitpredict-net:
+    driver: bridge
