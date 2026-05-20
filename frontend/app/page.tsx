@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { PipelineProgressCard } from "@/components/kronos/pipeline-progress-card";
 import { PriceTargetsCard, ConsensusCard } from "@/components/kronos/prediction-panel";
 import { AnalystDistributionChart } from "@/components/kronos/analyst-distribution-chart";
 import { HistoryTable } from "@/components/kronos/history-table";
 import { ScoreboardCard } from "@/components/kronos/scoreboard-card";
 import { LiveCandleCard } from "@/components/kronos/live-candle-card";
+import { BacktestSummaryCard } from "@/components/kronos/backtest-summary-card";
 import {
   useKronosPrediction,
   useKronosProgress,
@@ -86,21 +86,19 @@ function KronosDashboard() {
         <LiveCandleCard timeframe={TIMEFRAME} />
         <ScoreboardCard timeframe={TIMEFRAME} />
 
-        {/* Row 2 — main content spans 3 cols */}
-        <div className="lg:col-span-3 space-y-4">
+        {/* Row 2 — AnalystDistribution (col-span-3) + BacktestSummary (col 4) same height */}
+        <div className="lg:col-span-3">
           <AnalystDistributionChart
             timeframe={TIMEFRAME}
             prediction={prediction}
           />
+        </div>
+        <BacktestSummaryCard timeframe={TIMEFRAME} />
+
+        {/* Row 3 — HistoryTable spans all 4 cols */}
+        <div className="lg:col-span-4">
           <HistoryTable timeframe={TIMEFRAME} />
         </div>
-
-        {/* Row 2 col 4 — Alerts (self-start prevents grid from stretching its height) */}
-        <Card className="bg-bp-surface border-bp-border self-start">
-          <CardContent className="px-4 py-8 text-center">
-            <p className="text-xs text-zinc-500">Alerts — coming soon</p>
-          </CardContent>
-        </Card>
 
       </div>
     </div>

@@ -166,9 +166,9 @@ export function HistoryTable({ timeframe }: Props) {
         ) : !data?.items.length ? (
           <p className="text-sm text-zinc-500 px-4 py-4">No predictions yet for {timeframe}.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[380px]">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 bg-bp-surface z-10">
                 <tr className="border-b border-bp-border">
                   <th className="w-8" />
                   <th className="px-3 py-2 text-left text-zinc-500 font-medium whitespace-nowrap">

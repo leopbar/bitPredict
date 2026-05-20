@@ -6,9 +6,9 @@ import { Brain, LayoutDashboard, FlaskConical, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/backtest", label: "Backtest", icon: FlaskConical },
-  { href: "/rsi2", label: "RSI-2 Strategy", icon: Zap },
+  { href: "/", label: "Home", icon: LayoutDashboard, disabled: false },
+  { href: "/backtest", label: "Backtest", icon: FlaskConical, disabled: false },
+  { href: "/rsi2", label: "RSI-2 Strategy", icon: Zap, disabled: true },
 ];
 
 export function Sidebar() {
@@ -37,8 +37,21 @@ export function Sidebar() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
+            !item.disabled &&
+            (pathname === item.href ||
+              (item.href !== "/" && pathname.startsWith(item.href)));
+
+          if (item.disabled) {
+            return (
+              <div
+                key={item.href}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium border border-transparent cursor-not-allowed select-none text-zinc-700"
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{item.label}</span>
+              </div>
+            );
+          }
 
           return (
             <Link
