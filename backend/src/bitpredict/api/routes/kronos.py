@@ -834,15 +834,16 @@ def get_live_candle(
     tf = _validate_timeframe(timeframe)
     interval = tf.to_binance_interval()
 
+    binance_base = get_settings().binance_base_url.rstrip("/")
     try:
         with httpx.Client(timeout=5.0) as client:
             klines_resp = client.get(
-                "https://api.binance.com/api/v3/klines",
+                f"{binance_base}/api/v3/klines",
                 params={"symbol": "BTCUSDT", "interval": interval, "limit": 1},
             )
             klines_resp.raise_for_status()
             ticker_resp = client.get(
-                "https://api.binance.com/api/v3/ticker/price",
+                f"{binance_base}/api/v3/ticker/price",
                 params={"symbol": "BTCUSDT"},
             )
             ticker_resp.raise_for_status()
