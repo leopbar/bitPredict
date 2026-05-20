@@ -71,8 +71,8 @@ function KronosDashboard() {
         {/* Left column */}
         <div className="space-y-4">
 
-          {/* Top row: 3 cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Top row: 3 cards — Price Targets wider than the other two */}
+          <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-4">
             <PriceTargetsCard
               timeframe={TIMEFRAME}
               prediction={prediction}

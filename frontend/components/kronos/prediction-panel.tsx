@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, Shield } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, Shield, Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoTip } from "@/components/ui/tooltip";
@@ -127,78 +128,96 @@ export function PriceTargetsCard({ timeframe, prediction, isLoading }: Props) {
       : null;
 
   return (
-    <Card className="bg-bp-surface border-bp-border">
-      <CardHeader className="pb-1 pt-3 px-4">
-        <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-1">
+    <Card className="relative overflow-hidden bg-bp-surface border-bp-border">
+
+      {/* Decorative blue chart line in background */}
+      <svg
+        viewBox="0 0 400 120"
+        preserveAspectRatio="none"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="absolute inset-0 w-full h-full opacity-[0.15] pointer-events-none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="ptcGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0 100 C40 95, 70 88, 100 75 C130 62, 150 70, 180 54 C210 38, 240 45, 270 28 C300 11, 330 18, 400 8"
+          stroke="#3B82F6"
+          strokeWidth="2"
+        />
+        <path
+          d="M0 100 C40 95, 70 88, 100 75 C130 62, 150 70, 180 54 C210 38, 240 45, 270 28 C300 11, 330 18, 400 8 L400 120 L0 120 Z"
+          fill="url(#ptcGrad)"
+        />
+      </svg>
+
+      {/* Header — title only, no icon */}
+      <CardHeader className="pb-1 pt-3 px-4 relative">
+        <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
           Price Targets · {timeframe}
           <InfoTip text="Median predicted candle and confidence band across all 30 simulations." />
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pb-4 space-y-3">
 
-        {/* Expected close + confidence badge */}
-        <div>
-          <div className="flex items-center gap-1 mb-0.5">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Expected close</span>
-            <InfoTip text="Median of the 30 simulated close prices — the consensus target." />
-          </div>
-          <p className="text-2xl font-bold font-mono text-zinc-100 leading-tight">
-            {close != null ? formatUSD(close) : "—"}
-          </p>
-          {bandWidthPct != null && (
-            <div className="mt-1.5">
-              <ConfidenceBadge bandWidthPct={bandWidthPct} />
-            </div>
-          )}
-        </div>
+      {/* Body — two columns: content left, brain + badge right */}
+      <CardContent className="px-4 pb-4 relative">
+        <div className="flex items-stretch justify-between gap-4">
 
-        {/* Q10/Q90 band */}
-        {q10 != null && q90 != null && (
-          <div>
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className="text-[10px] uppercase tracking-wide text-zinc-500">80% range</span>
-              <InfoTip text="80% of simulations predicted a close between these two values." />
+          {/* Left: expected close → price → range */}
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] uppercase tracking-wide text-zinc-500">Expected close</span>
+              <InfoTip text="Median of the 30 simulated close prices — the consensus target." />
             </div>
-            <p className="text-sm font-mono text-zinc-300">
-              <span className="text-amber-400">{formatUSD(q10)}</span>
-              <span className="text-zinc-600 mx-1.5">──</span>
-              <span className="text-violet-400">{formatUSD(q90)}</span>
-              {bandWidthPct != null && (
-                <span className="text-[10px] text-zinc-600 ml-2">±{bandWidthPct.toFixed(2)}%</span>
-              )}
+
+            <p
+              className="text-4xl font-bold font-mono text-blue-400 leading-none tracking-tight"
+              style={{ textShadow: "0 0 24px rgba(59,130,246,0.35)" }}
+            >
+              {close != null ? formatUSD(close) : "—"}
             </p>
-          </div>
-        )}
 
-        {/* OHLC */}
-        <div>
-          <div className="flex items-center gap-1 mb-1">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Predicted candle</span>
-            <InfoTip text="Median Open / High / Low / Close across all 30 simulations." />
-          </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            {([
-              { label: "O", value: open },
-              { label: "H", value: high },
-              { label: "C", value: close, accent: true },
-              { label: "L", value: low },
-            ] as { label: string; value: number | null; accent?: boolean }[]).map(({ label, value, accent: a }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <span className="text-zinc-600 w-3">{label}</span>
-                <span className={`font-mono ${a ? "text-zinc-100 font-medium" : "text-zinc-400"}`}>
-                  {value != null ? formatUSD(value) : "—"}
-                </span>
+            {q10 != null && q90 != null && (
+              <div className="mt-0.5">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-[10px] uppercase tracking-wide text-zinc-500">80% range</span>
+                  <InfoTip text="80% of simulations predicted a close between these two values." />
+                </div>
+                <p className="text-base font-mono whitespace-nowrap">
+                  <span className="text-amber-400">{formatUSD(q10)}</span>
+                  <span className="text-zinc-600 mx-1.5">—</span>
+                  <span className="text-violet-400">{formatUSD(q90)}</span>
+                </p>
+                {bandWidthPct != null && (
+                  <p className="text-[11px] text-zinc-600 font-mono mt-0.5">±{bandWidthPct.toFixed(2)}%</p>
+                )}
+                <p className="text-xs text-zinc-600 font-mono mt-0.5">
+                  Last run: {format(parseISO(prediction.predicted_at), "HH:mm:ss")}
+                </p>
               </div>
-            ))}
+            )}
           </div>
-          {rangePct && (
-            <p className="text-[10px] text-zinc-600 mt-1">
-              H–L span: {rangePct}%
-              <InfoTip text="Expected candle height as % of close — indicates expected volatility." />
-            </p>
-          )}
-        </div>
 
+          {/* Right: brain icon top, confidence badge bottom */}
+          <div className="flex flex-col items-end justify-between shrink-0">
+            <span
+              className="h-12 w-12 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-center"
+              style={{ boxShadow: "0 0 18px rgba(59,130,246,0.25)" }}
+            >
+              <Brain className="w-6 h-6 text-blue-400" />
+            </span>
+
+            {bandWidthPct != null && (
+              <ConfidenceBadge bandWidthPct={bandWidthPct} />
+            )}
+          </div>
+
+        </div>
       </CardContent>
     </Card>
   );
