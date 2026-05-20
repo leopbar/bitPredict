@@ -1,0 +1,176 @@
+name: bitpredict
+
+# Production compose file for the bitPredict VPS deployment.
+# Ports are picked to NOT clash with the other apps already running:
+#   3000-3004 → other frontends, 8000-8003 → other backends, 5433-5435 → other DBs.
+# DB / Redis stay on the internal network only — no host port mapping.
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: bitpredict-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - bitpredict_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - bitpredict-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bitpredict-redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - bitpredict-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: bitpredict-backend
+    restart: always
+    command: ["uvicorn", "bitpredict.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: production
+      API_KEY: ${API_KEY}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - bitpredict_data:/app/data
+    ports:
+      - "8004:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - bitpredict-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_API_KEY: ${API_KEY}
+    container_name: bitpredict-frontend
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_API_KEY: ${API_KEY}
+    ports:
+      - "3005:3000"
+    networks:
+      - bitpredict-net
+
+  worker_predictions:
+    build:
+      context: ./backend
+    container_name: bitpredict-worker-predictions
+    restart: always
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=2", "--queues=celery,predictions", "--hostname=worker-predictions@%h"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - bitpredict_data:/app/data
+    networks:
+      - bitpredict-net
+
+  worker_backtests:
+    build:
+      context: ./backend
+    container_name: bitpredict-worker-backtests
+    restart: always
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=1", "--queues=backtests", "--hostname=worker-backtests@%h"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - bitpredict_data:/app/data
+    networks:
+      - bitpredict-net
+
+  beat:
+    build:
+      context: ./backend
+    container_name: bitpredict-beat
+    restart: always
+    command: ["celery", "-A", "bitpredict.scheduling.beat_schedule:celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bitpredict-net
+
+  flower:
+    build:
+      context: ./backend
+    container_name: bitpredict-flower
+    restart: always
+    command: ["celery", "-A", "bitpredict.scheduling.celery_app:celery_app", "flower", "--port=5555"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    ports:
+      - "5556:5555"
+    networks:
+      - bitpredict-net
+
+
+volumes:
+  bitpredict_pgdata:
+  bitpredict_data:
+
+networks:
+  bitpredict-net:
+    driver: bridge
