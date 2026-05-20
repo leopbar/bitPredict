@@ -50,6 +50,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: prod
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://localhost:5000}
+      BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
       API_KEY: ${API_KEY}
       API_CORS_ORIGINS: ${API_CORS_ORIGINS}
     depends_on:
@@ -103,6 +104,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: prod
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://localhost:5000}
+      BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
     depends_on:
       db:
         condition: service_healthy
@@ -125,6 +127,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: prod
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://localhost:5000}
+      BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
     depends_on:
       db:
         condition: service_healthy
@@ -147,6 +150,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: prod
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://localhost:5000}
+      BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
     depends_on:
       db:
         condition: service_healthy
@@ -167,6 +171,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: prod
       MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://localhost:5000}
+      BINANCE_BASE_URL: ${BINANCE_BASE_URL:-https://api.binance.com}
     depends_on:
       - redis
     ports:
