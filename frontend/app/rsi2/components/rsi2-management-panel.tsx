@@ -206,14 +206,15 @@ function useJob(jobType: JobType) {
 
         // If result is already embedded in the recent-jobs response (disk fallback or in-memory),
         // use it directly — no need to call getJobResults.
-        const embeddedResult = (entry as Record<string, unknown>).result as Record<string, unknown> | null | undefined;
+        const entryRecord = entry as unknown as Record<string, unknown>;
+        const embeddedResult = entryRecord.result as Record<string, unknown> | null | undefined;
 
         const restored: JobState = {
           jobId: entry.job_id,
           status: entry.status as JobState["status"],
           progress: entry.progress ?? 0,
           message: entry.message ?? "",
-          error: (entry as Record<string, unknown>).error as string | null ?? null,
+          error: (entryRecord.error as string | null) ?? null,
           result: embeddedResult ?? null,
         };
         setJob(restored);

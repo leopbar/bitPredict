@@ -48,7 +48,7 @@ export function AdvancedSettingsDialog({ timeframe }: Props) {
       setConfirmBacktest(true);
       return;
     }
-    triggerBacktest.mutate(timeframe);
+    triggerBacktest.mutate({ timeframe });
     setOpen(false);
     setConfirmBacktest(false);
   }

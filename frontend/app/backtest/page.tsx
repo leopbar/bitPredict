@@ -617,8 +617,8 @@ function RunCard({ timeframe }: { timeframe: AppTimeframe }) {
 
             <Button
               size="sm"
-              variant="outline"
-              className="w-full border-red-500/30 text-red-400 hover:bg-red-950/30 hover:text-red-300"
+              variant="danger"
+              className="w-full"
               onClick={() => stop.mutate(timeframe)}
               disabled={stop.isPending}
             >
