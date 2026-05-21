@@ -30,6 +30,10 @@ env/
 *.swo
 .DS_Store
 
+# Claude
+CLAUDE.md
+.claude/
+
 # Project artifacts
 mlflow-artifacts/
 /data/
