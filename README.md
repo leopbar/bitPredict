@@ -272,11 +272,10 @@ bitPredict/
 - [x] Kronos analyst dashboard (price targets, consensus, distribution histogram, scoreboard)
 - [x] Backtest engine with portfolio simulation
 - [x] Production VPS deployment with geo-resilient Binance ingestion
-- [ ] **Timeframe selector** on the main dashboard (currently hardcoded 15m view)
-- [ ] **Advanced settings dialog** (sample_count, temperature, model variant override)
-- [ ] **Integrated backtest UI** — fold the standalone `/backtest` page into the main dashboard
-- [ ] **Weekly backtest schedule** — automatic refresh via Celery beat
-- [ ] **Alerting** — webhook / email when calibrated confidence crosses a threshold
+- [x] **Timeframe selector** on the main dashboard (15m/1h/1d live; 4h/8h/1w infrastructure ready)
+- [x] **Advanced settings dialog** (sample_count, temperature, model variant override)
+- [x] **Integrated backtest UI** — `BacktestSummaryCard` embedded in main dashboard (also standalone `/backtest` page)
+- [ ] **Weekly backtest schedule** — automatic refresh via Celery beat (currently manual-trigger only)
 - [ ] **GPU inference** — currently CPU-only; GPU support would bring 1w predictions under 30s
 
 ---
