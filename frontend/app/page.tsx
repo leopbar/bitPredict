@@ -18,6 +18,19 @@ import {
 } from "@/lib/hooks/use-kronos";
 import { useEnsureKlines } from "@/lib/hooks/use-klines";
 import { useTimeframe } from "@/lib/hooks/use-timeframe";
+import { kronosApi } from "@/lib/api/endpoints";
+
+// All supported timeframes — used for the startup bootstrap below.
+const ALL_TIMEFRAMES = ["15m", "1h", "1d"] as const;
+
+// Minimum cooldown between UI-triggered cycles per timeframe.
+// Matches the candle duration so the UI never fires more than once per candle,
+// even if simsAvailable keeps returning false between polling cycles.
+const TRIGGER_COOLDOWN_MS: Record<string, number> = {
+  "15m": 15 * 60 * 1000,
+  "1h":  60 * 60 * 1000,
+  "1d":  24 * 60 * 60 * 1000,
+};
 
 function KronosDashboard() {
   const queryClient = useQueryClient();
@@ -27,8 +40,44 @@ function KronosDashboard() {
   const { data: sims, isLoading: simsLoading } = useKronosSims(timeframe);
   const trigger = useKronosTrigger();
   const { isIngesting, klineCount } = useEnsureKlines(timeframe);
-  const lastTriggeredAt = useRef<number>(0);
+  // Per-timeframe timestamps of the last trigger (bootstrap or active-tab).
+  // Keyed by timeframe string so the 60s guard covers ALL timeframes, not just
+  // the one currently visible.
+  const lastTriggeredAt = useRef<Record<string, number>>({});
   const wasRunning = useRef(false);
+  const bootstrapped = useRef(false);
+
+  // ── Startup bootstrap ──────────────────────────────────────────────────────
+  // Runs once on mount. For EVERY timeframe (not just the active tab), check
+  // whether predictions already exist. If a timeframe has no sims, fire the
+  // trigger immediately so the backend queues a cycle regardless of which tab
+  // the user is looking at. Celery Beat owns ongoing scheduling; this only
+  // covers the "fresh deploy / first boot" gap.
+  //
+  // Critically: we stamp lastTriggeredAt BEFORE awaiting triggerPrediction so
+  // the active-tab effect sees "triggered recently" even during the gap between
+  // the dispatch and the Celery worker writing status="running" to the DB.
+  useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+
+    const bootstrap = async () => {
+      for (const tf of ALL_TIMEFRAMES) {
+        try {
+          const simsResp = await kronosApi.getSims(tf);
+          if (!simsResp.available) {
+            lastTriggeredAt.current[tf] = Date.now();
+            await kronosApi.triggerPrediction(tf);
+          }
+        } catch {
+          // Ignore per-timeframe errors — the active-tab effect is the fallback.
+          delete lastTriggeredAt.current[tf];
+        }
+      }
+    };
+
+    void bootstrap();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRunning = progress?.state === "PROGRESS" || progress?.state === "STARTED";
   const simsAvailable = sims?.available === true;
@@ -45,15 +94,16 @@ function KronosDashboard() {
 
   useEffect(() => {
     const now = Date.now();
+    const cooldown = TRIGGER_COOLDOWN_MS[timeframe] ?? 60_000;
     if (
       !isIngesting &&
       !simsLoading &&
       !simsAvailable &&
       !isRunning &&
       !trigger.isPending &&
-      now - lastTriggeredAt.current > 60_000
+      now - (lastTriggeredAt.current[timeframe] ?? 0) > cooldown
     ) {
-      lastTriggeredAt.current = now;
+      lastTriggeredAt.current[timeframe] = now;
       trigger.mutate(timeframe);
     }
   }, [isIngesting, simsLoading, simsAvailable, isRunning, trigger.isPending, timeframe]); // eslint-disable-line react-hooks/exhaustive-deps

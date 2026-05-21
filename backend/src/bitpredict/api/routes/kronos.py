@@ -485,12 +485,16 @@ def trigger_prediction(
     _: str = Depends(require_api_key),
 ) -> TriggerResponse:
     _validate_timeframe(timeframe)
-    from bitpredict.kronos.tasks import run_15m_cycle, run_kronos_prediction
+    from bitpredict.kronos.tasks import run_15m_cycle, run_1h_cycle, run_1d_cycle
 
+    # Always use the full cycle tasks so kline ingestion is included before
+    # inference, regardless of which timeframe is being triggered.
     if timeframe == "15m":
         task = run_15m_cycle.apply_async()
+    elif timeframe == "1h":
+        task = run_1h_cycle.apply_async()
     else:
-        task = run_kronos_prediction.apply_async(args=[timeframe])
+        task = run_1d_cycle.apply_async()
     return TriggerResponse(
         task_id=task.id,
         timeframe=timeframe,

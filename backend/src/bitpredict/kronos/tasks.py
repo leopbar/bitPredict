@@ -19,7 +19,15 @@ def _run_async(coro):
         loop.close()
 
 
-@celery_app.task(name="kronos.run_15m_cycle", bind=True, queue="predictions")
+@celery_app.task(
+    name="kronos.run_15m_cycle",
+    bind=True,
+    queue="predictions",
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=30,
+    retry_backoff=False,
+)
 def run_15m_cycle(self):
     """15m full cycle: ingest latest klines → run Kronos prediction, sequential."""
     import redis as _redis
@@ -90,7 +98,15 @@ def run_15m_cycle(self):
     return {"status": "done", "timeframe": timeframe, "prediction_id": record.id}
 
 
-@celery_app.task(name="kronos.run_1h_cycle", bind=True, queue="predictions")
+@celery_app.task(
+    name="kronos.run_1h_cycle",
+    bind=True,
+    queue="predictions",
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=60,
+    retry_backoff=False,
+)
 def run_1h_cycle(self):
     """1h full cycle: ingest latest klines → run Kronos prediction, sequential."""
     import redis as _redis
@@ -161,7 +177,15 @@ def run_1h_cycle(self):
     return {"status": "done", "timeframe": timeframe, "prediction_id": record.id}
 
 
-@celery_app.task(name="kronos.run_1d_cycle", bind=True, queue="predictions")
+@celery_app.task(
+    name="kronos.run_1d_cycle",
+    bind=True,
+    queue="predictions",
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=120,
+    retry_backoff=False,
+)
 def run_1d_cycle(self):
     """1d full cycle: ingest latest klines → run Kronos prediction, sequential."""
     import redis as _redis
