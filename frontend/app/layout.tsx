@@ -14,6 +14,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "bitPredict — BTC Forecast",
   description: "Bitcoin price forecasting powered by Kronos foundation model.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml", sizes: "any" },
+    ],
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -34,3 +40,4 @@ export default function RootLayout({
     </html>
   );
 }
+
