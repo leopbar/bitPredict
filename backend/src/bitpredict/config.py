@@ -5,8 +5,11 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import PostgresDsn, RedisDsn
+from pydantic import PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_KEYS = {"dev-secret-key", "secret", "changeme", "password", "test"}
+_MIN_KEY_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -27,6 +30,21 @@ class Settings(BaseSettings):
 
     api_key: str = "dev-secret-key"
     api_cors_origins: str = "http://localhost:3000,http://localhost:3001"
+
+    @model_validator(mode="after")
+    def _reject_insecure_key_in_prod(self) -> "Settings":
+        if self.environment != "prod":
+            return self
+        if self.api_key.lower() in _INSECURE_KEYS:
+            raise ValueError(
+                "API_KEY is set to a known insecure default. "
+                "Set a strong random key before starting in production."
+            )
+        if len(self.api_key) < _MIN_KEY_LENGTH:
+            raise ValueError(
+                f"API_KEY must be at least {_MIN_KEY_LENGTH} characters in production."
+            )
+        return self
 
     # Reporting
     reports_dir: str = "/app/data/reports"

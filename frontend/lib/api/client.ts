@@ -1,6 +1,3 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "dev-secret-key";
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -12,21 +9,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  auth = true,
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(auth && { "X-API-Key": API_KEY }),
     ...(options.headers as Record<string, string>),
   };
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(`/api${path}`, { ...options, headers });
 
   if (!response.ok) {
     let data: unknown;
@@ -48,17 +37,16 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(path: string, auth = true) => request<T>(path, { method: "GET" }, auth),
-  post: <T>(path: string, body?: unknown, auth = true) =>
-    request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }, auth),
-  put: <T>(path: string, body?: unknown, auth = true) =>
-    request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }, auth),
-  delete: <T>(path: string, auth = true) => request<T>(path, { method: "DELETE" }, auth),
+  // _auth kept for call-site compatibility but auth is now handled server-side
+  get: <T>(path: string, _auth = true) => request<T>(path, { method: "GET" }),
+  post: <T>(path: string, body?: unknown, _auth = true) =>
+    request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown, _auth = true) =>
+    request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string, _auth = true) => request<T>(path, { method: "DELETE" }),
 
   downloadBlob: async (path: string, filename: string): Promise<void> => {
-    const response = await fetch(`${API_URL}${path}`, {
-      headers: { "X-API-Key": API_KEY },
-    });
+    const response = await fetch(`/api${path}`);
     if (!response.ok) throw new ApiError(response.status, `HTTP ${response.status}`);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
