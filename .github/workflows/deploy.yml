@@ -28,9 +28,11 @@ jobs:
 
             DEPLOY_DIR="/opt/bitpredict"
 
-            # Write the production env file from the secret.
-            # printf avoids shell interpretation of special characters in the value.
-            printf '%s' "$VPS_ENV" > "${DEPLOY_DIR}/.env.production"
-            chmod 600 "${DEPLOY_DIR}/.env.production"
+            # Only write .env.production when the secret is non-empty.
+            # Guards against an accidentally blank VPS_ENV wiping live credentials.
+            if [[ -n "${VPS_ENV:-}" ]]; then
+              printf '%s' "$VPS_ENV" > "${DEPLOY_DIR}/.env.production"
+              chmod 600 "${DEPLOY_DIR}/.env.production"
+            fi
 
             bash "${DEPLOY_DIR}/deploy/deploy.sh"
