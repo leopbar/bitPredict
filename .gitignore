@@ -34,6 +34,9 @@ env/
 CLAUDE.md
 .claude/
 
+# Documentação interna (não versionar)
+DOCUMENTACAO_COMPLETA.md
+
 # Project artifacts
 mlflow-artifacts/
 /data/
@@ -47,3 +50,4 @@ out/
 
 # OS
 Thumbs.db
+
