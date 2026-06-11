@@ -188,4 +188,3 @@ networks:
     driver: bridge
   bitpredict-frontend-net:
     driver: bridge
-    internal: true
