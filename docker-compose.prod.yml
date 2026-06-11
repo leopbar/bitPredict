@@ -68,6 +68,7 @@ services:
       start_period: 60s
     networks:
       - bitpredict-net
+      - bitpredict-frontend-net
 
   frontend:
     build:
@@ -85,7 +86,7 @@ services:
     ports:
       - "3005:3000"
     networks:
-      - bitpredict-net
+      - bitpredict-frontend-net
 
   worker_predictions:
     build:
@@ -185,3 +186,6 @@ volumes:
 networks:
   bitpredict-net:
     driver: bridge
+  bitpredict-frontend-net:
+    driver: bridge
+    internal: true
